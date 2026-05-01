@@ -54,6 +54,12 @@ type FetchInput = {
   url: string;
 };
 
+type WebfetchRenderState = {
+  startedAt: number | undefined;
+  endedAt: number | undefined;
+  interval: NodeJS.Timeout | undefined;
+};
+
 type WebfetchResultRenderState = {
   cachedWidth: number | undefined;
   cachedLines: string[] | undefined;
@@ -162,6 +168,18 @@ function rebuildWebfetchResultRenderComponent(
     }
     component.addChild(new Text(`\n${theme.fg("warning", `[${warnings.join(". ")}]`)}`, 0, 0));
   }
+
+  if (startedAt !== undefined) {
+    const label = options.isPartial ? "Elapsed" : "Took";
+    const endTime = endedAt ?? Date.now();
+    component.addChild(
+      new Text(`\n${theme.fg("muted", `${label} ${formatDuration(endTime - startedAt)}`)}`, 0, 0),
+    );
+  }
+}
+
+function formatDuration(ms: number): string {
+  return `${(ms / 1000).toFixed(1)}s`;
 }
 
 /**
@@ -213,11 +231,11 @@ const turndownService = new TurndownService({
  */
 export default async function (pi: ExtensionAPI) {
   pi.registerTool(
-    defineTool({
+    defineTool<typeof fetchParams, FetchDetails, WebfetchRenderState>({
       name: "webfetch",
       label: "webfetch",
       description:
-        `Fetch information from the web, such as reading articles, accessing documentation, or gathering data from online sources. ` +
+        `Fetch information from the web, such as reading articles, accessing documentation, or gathering data from online sources. Use when user or instructions contain a URL that may provide more context/relevant information. ` +
         `HTML content will be converted to markdown format for easier reading and processing. ` +
         `Results are truncated to first ${DEFAULT_MAX_LINES} lines or ${formatSize(DEFAULT_MAX_BYTES)} (whichever is hit first) to prevent large responses from overwhelming the context window.`,
       promptSnippet: "Fetch web pages and convert HTML to markdown with truncation",
