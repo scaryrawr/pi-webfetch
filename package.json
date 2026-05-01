@@ -1,0 +1,35 @@
+{
+  "name": "pi-webfetch",
+  "version": "1.0.0",
+  "description": "webfetch for pi",
+  "license": "MIT",
+  "author": "Mike Wallio",
+  "type": "module",
+  "scripts": {
+    "build": "tsgo -p ./tsconfig.json",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "lint": "oxlint -c .oxlintrc.json --tsconfig ./tsconfig.json ./extensions/*.ts ./extensions/**/*.ts",
+    "lint:fix": "oxlint -c .oxlintrc.json --fix --tsconfig ./tsconfig.json ./extensions/*.ts ./extensions/**/*.ts",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "turndown": "^7.2.4",
+    "typebox": "^1.1.34",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@mariozechner/pi-coding-agent": "^0.70.6",
+    "@types/turndown": "^5.0.6",
+    "@typescript/native-preview": "^7.0.0-dev.20260428.1",
+    "oxfmt": "^0.47.0",
+    "oxlint": "^1.62.0",
+    "oxlint-tsgolint": "^0.22.1",
+    "vitest": "^4.1.5"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions/"
+    ]
+  }
+}
