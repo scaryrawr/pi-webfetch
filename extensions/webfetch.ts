@@ -12,7 +12,7 @@ import {
   type ToolRenderResultOptions,
   type Theme,
 } from "@mariozechner/pi-coding-agent";
-import { Container, Text } from "@mariozechner/pi-tui";
+import { Container, Text, truncateToWidth } from "@mariozechner/pi-tui";
 import TurndownService from "turndown";
 import { Type } from "typebox";
 
@@ -54,6 +54,20 @@ type FetchInput = {
   url: string;
 };
 
+type WebfetchResultRenderState = {
+  cachedWidth: number | undefined;
+  cachedLines: string[] | undefined;
+  cachedSkipped: number | undefined;
+};
+
+class WebfetchResultRenderComponent extends Container {
+  state: WebfetchResultRenderState = {
+    cachedWidth: undefined,
+    cachedLines: undefined,
+    cachedSkipped: undefined,
+  };
+}
+
 /**
  * Details about a webfetch result, including optional truncation metadata.
  */
@@ -87,12 +101,15 @@ function formatWebfetchCall(args: { url: string } | undefined, theme: Theme): st
  * @param showImages - Whether to render image content (currently unused).
  */
 function rebuildWebfetchResultRenderComponent(
-  component: Container,
+  component: WebfetchResultRenderComponent,
   result: AgentToolResult<FetchDetails>,
   options: ToolRenderResultOptions,
   theme: Theme,
   showImages: boolean,
+  startedAt: number | undefined,
+  endedAt: number | undefined,
 ): void {
+  const state = component.state;
   component.clear();
 
   const output = getTextOutput(result, showImages).trim();
@@ -106,14 +123,28 @@ function rebuildWebfetchResultRenderComponent(
     if (options.expanded) {
       component.addChild(new Text(`\n${styledOutput}`, 0, 0));
     } else {
-      const preview = truncateToVisualLines(styledOutput, WEBFETCH_PREVIEW_LINES, 80);
-      if (preview.skippedCount && preview.skippedCount > 0) {
-        const hint =
-          theme.fg("muted", `... (${preview.skippedCount} more lines,`) +
-          ` ${keyHint("app.tools.expand", "to expand")})`;
-        component.addChild(new Text(`\n${hint}`, 0, 0));
-      }
-      component.addChild(new Text(`\n${preview.visualLines.join("\n")}`, 0, 0));
+      component.addChild({
+        render: (width: number) => {
+          if (state.cachedLines === undefined || state.cachedWidth !== width) {
+            const preview = truncateToVisualLines(styledOutput, WEBFETCH_PREVIEW_LINES, width);
+            state.cachedLines = preview.visualLines;
+            state.cachedSkipped = preview.skippedCount;
+            state.cachedWidth = width;
+          }
+          if (state.cachedSkipped && state.cachedSkipped > 0) {
+            const hint =
+              theme.fg("muted", `... (${state.cachedSkipped} more lines,`) +
+              ` ${keyHint("app.tools.expand", "to expand")})`;
+            return ["", truncateToWidth(hint, width, "..."), ...(state.cachedLines ?? [])];
+          }
+          return ["", ...(state.cachedLines ?? [])];
+        },
+        invalidate: () => {
+          state.cachedWidth = undefined;
+          state.cachedLines = undefined;
+          state.cachedSkipped = undefined;
+        },
+      });
     }
   }
 
@@ -220,15 +251,41 @@ export default async function (pi: ExtensionAPI) {
             details: { truncation: undefined },
           };
         }
-      },
-      renderCall(args, theme, context) {
+      }, //,
+      renderCall(args, _theme, context) {
+        const state = context.state;
+        if (context.executionStarted && state.startedAt === undefined) {
+          state.startedAt = Date.now();
+          state.endedAt = undefined;
+        }
         const text = (context.lastComponent as Text | undefined) ?? new Text("", 0, 0);
-        text.setText(formatWebfetchCall(args, theme));
+        text.setText(formatWebfetchCall(args, _theme));
         return text;
       },
-      renderResult(result, options, theme, context) {
-        const component = (context.lastComponent as Container | undefined) ?? new Container();
-        rebuildWebfetchResultRenderComponent(component, result, options, theme, context.showImages);
+      renderResult(result, options, _theme, context) {
+        const state = context.state;
+        if (state.startedAt !== undefined && options.isPartial && !state.interval) {
+          state.interval = setInterval(() => context.invalidate(), 1000);
+        }
+        if (!options.isPartial || context.isError) {
+          state.endedAt ??= Date.now();
+          if (state.interval) {
+            clearInterval(state.interval);
+            state.interval = undefined;
+          }
+        }
+        const component =
+          (context.lastComponent as WebfetchResultRenderComponent | undefined) ??
+          new WebfetchResultRenderComponent();
+        rebuildWebfetchResultRenderComponent(
+          component,
+          result,
+          options,
+          _theme,
+          context.showImages,
+          state.startedAt,
+          state.endedAt,
+        );
         component.invalidate();
         return component;
       },
