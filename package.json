@@ -19,7 +19,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@mariozechner/pi-coding-agent": "^0.70.6",
+    "@mariozechner/pi-coding-agent": "^0.71.1",
     "@types/turndown": "^5.0.6",
     "@typescript/native-preview": "^7.0.0-dev.20260428.1",
     "oxfmt": "^0.47.0",
