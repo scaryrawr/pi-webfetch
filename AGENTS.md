@@ -1,43 +1,45 @@
-# pi-automode
+# pi-webfetch
 
 ## Architecture
 
-This repo implements the **automode extension** for the pi coding agent — an AI-driven shell command classifier that evaluates `bash` tool calls before execution, returning `{ block: true/false }` with an optional reason.
+This repo implements the **webfetch extension** for the pi coding agent — a tool that fetches web pages, converts HTML to markdown, and returns the result with truncation metadata.
 
 **Extension structure:**
 
-- `extensions/automode.ts` — Extension entry point. Registers the `automodel` command and subscribes to `tool_call` events, delegating bash commands to the classifier.
-- `extensions/automode/config.ts` — Reads/writes `automode.json` from the agent's config directory. Uses Zod for schema validation.
-- `extensions/automode/types.ts` — Shared type: `ModelIdentifier = { provider: string, id: string }`.
-- `extensions/classifier/classifier.ts` — Core classifier: spins up an in-memory agent session with a custom `classify_shell_command` tool. The model classifies commands as `safe`, `ask`, or `dangerous` and resolves a deferred `ToolCallEventResult`.
-- `extensions/classifier/classifier.test.ts` — Integration tests against a real model (lmstudio).
+- `extensions/webfetch.ts` — Single-file extension. Registers the `webfetch` tool, defines the fetch logic, HTML→markdown conversion (via Turndown), truncation, and custom TUI renderers for call/result display.
 
 **Key patterns:**
 
-- Lazy initialization with cache invalidation on error (`classifier` promise reset to `undefined`).
-- Deferred resolution pattern for async tool-call results (`createDeferred` utility).
-- `SessionManager.inMemory()` + `SettingsManager.inMemory()` for zero-persistence classifier sessions.
-- Config stored in the shared agent directory via `getAgentDir()`, not in the repo.
+- Fetches only `http:` and `https:` URLs; rejects other protocols.
+- HTML responses are converted to markdown via Turndown (ATX headings, fenced code blocks, `-` list markers).
+- Responses are truncated to 2000 lines / 50 KB (head truncation) to protect the context window.
+- Custom TUI renderers: a `WebfetchResultRenderComponent` (Container subclass) handles collapsed preview with line count hints and expanded full output.
+- Result truncation metadata is carried in `details` so the renderer can show a banner.
 
 ## Conventions
 
 - **TypeScript**: Strict mode, ES2024, `nodenext` modules. Use `verbatimModuleSyntax`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, `noUncheckedSideEffectImports`.
-- **Naming**: Functions use `camelCase`. Type exports use PascalCase. JSDoc `@param`/`@returns`/`@throws` for public APIs.
-- **Error handling**: Always wrap in try/catch; return typed error arrays (`{ scope, error }`) rather than throwing from config helpers.
 - **Imports**: Use explicit `.js` extensions for relative imports (TS/Nodenext convention).
-- **Zod**: Use `.looseObject()` for config schemas to tolerate extra keys.
+- **Naming**: Functions use `camelCase`. Type exports use PascalCase. JSDoc `@param`/`@returns`/`@throws` for public APIs.
+- **Error handling**: Wrap fetch logic in try/catch; return typed `{ content, details }` results rather than throwing from the tool executor.
+- **TUI**: Use `@mariozechner/pi-tui` primitives (`Container`, `Text`, `truncateToWidth`, `truncateToVisualLines`) for custom renderers.
+- **Truncation**: Prefer `truncateHead` from the pi agent SDK; include truncation metadata in result `details` for the renderer to surface.
 
 ## Build & Test
 
 ```bash
 npm run build    # tsgo -p ./tsconfig.json
 npm test         # vitest
+npm run fmt      # oxfmt
+npm run fmt:check # oxfmt --check
+npm run lint     # oxlint with tsgo type-checking
+npm run lint:fix # oxlint auto-fix
 ```
 
-Validation: `npm run build` must pass (zero errors). Tests: `npm test` (integration tests require a running local model).
+Validation: `npm run build` must pass (zero errors).
 
 ## Safety
 
-- The extension blocks bash commands deemed dangerous by the classifier model.
-- The `automodel` command (`/automodel`) persists the selected model to a JSON config file in the agent's home directory — not the repo.
-- Classifier sessions are in-memory only; no state is persisted between sessions except the model identifier.
+- Only `http:` and `https:` protocols are allowed.
+- Responses exceeding 5 MB are rejected at the fetch level.
+- No state is persisted between tool calls; each fetch is independent.
