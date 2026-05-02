@@ -1,3 +1,4 @@
+import type { TextContent, ImageContent } from "@mariozechner/pi-ai";
 import {
   type ExtensionAPI,
   defineTool,
@@ -23,22 +24,13 @@ import { Type } from "typebox";
  * @returns The concatenated text content, or empty string if none found.
  */
 function getTextOutput(
-  result:
-    | {
-        content: Array<{
-          type: string;
-          text?: string;
-          data?: string;
-          mimeType?: string;
-        }>;
-      }
-    | undefined,
+  result: AgentToolResult<FetchDetails> | undefined,
   _showImages: boolean,
 ): string {
   return (
     result?.content
-      .filter((c) => c.type === "text")
-      .map((c) => c.text || "")
+      .filter((c): c is TextContent => c.type === "text")
+      .map((c) => c.text)
       .join("\n") || ""
   );
 }
@@ -185,6 +177,7 @@ function formatDuration(ms: number): string {
 /**
  * Fetches a URL, converts HTML to markdown, and truncates the result.
  * Only HTTP and HTTPS protocols are supported. Responses over 5 MB are rejected.
+ * Text content is truncated; image content is returned as base64.
  * @param params - The fetch input containing the URL.
  * @param signal - Optional abort signal for canceling the request.
  * @returns A promise resolving to the fetched content and optional truncation metadata.
@@ -193,7 +186,10 @@ function formatDuration(ms: number): string {
 const webfetch = async (
   { url: urlStr }: FetchInput,
   signal?: AbortSignal,
-): Promise<{ content: string; truncation: TruncationResult | undefined }> => {
+): Promise<{
+  content: (TextContent | ImageContent)[];
+  truncation: TruncationResult | undefined;
+}> => {
   const url = new URL(urlStr);
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new Error("Only HTTP and HTTPS protocols are supported.");
@@ -204,16 +200,33 @@ const webfetch = async (
     throw new Error(`Failed to fetch ${url.href}: ${response.statusText}`);
   }
 
-  let content = new TextDecoder().decode(await response.arrayBuffer());
-  const contentType = response.headers.get("content-type") || "";
-  if (contentType.includes("text/html")) {
-    content = turndownService.turndown(content);
+  const contentType = ((response.headers.get("content-type") || "").split(";")[0] ?? "")
+    .trim()
+    .toLowerCase();
+  const arrayBuffer = await response.arrayBuffer();
+
+  // Parse the media type (RFC 9110: media-type = type "/" subtype)
+  const mediaType = contentType.split("/")[0] ?? "";
+
+  if (mediaType === "image") {
+    // Return image as base64-encoded ImageContent
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+    return {
+      content: [{ type: "image", data: base64, mimeType: contentType }],
+      truncation: undefined,
+    };
+  }
+
+  // For text content (including text/html), decode and optionally convert
+  let textContent = new TextDecoder().decode(arrayBuffer);
+  if (contentType === "text/html") {
+    textContent = turndownService.turndown(textContent);
   }
 
   // Apply truncation using defaults (2000 lines / 50KB)
-  const truncation = truncateHead(content);
+  const truncation = truncateHead(textContent);
   return {
-    content: truncation.content,
+    content: [{ type: "text", text: truncation.content }],
     truncation: truncation.truncated ? truncation : undefined,
   };
 };
@@ -253,13 +266,20 @@ export default async function (pi: ExtensionAPI) {
           const truncationResult: FetchDetails = truncation
             ? { truncation }
             : { truncation: undefined };
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          const truncatedText = truncation
-            ? `${content}\n\n[Showing lines ${truncation.totalLines - truncation.outputLines + 1}-${truncation.totalLines} of ${truncation.totalLines} (${formatSize(truncation.outputBytes)} of ${formatSize(truncation.totalBytes)}). Truncated from head.]`
-            : content;
+
+          // For text content, append truncation metadata to the last text block
+          const finalContent = content.map((c, i) => {
+            if (c.type === "text" && i === content.length - 1 && truncation) {
+              return {
+                ...c,
+                text: `${c.text}\n\n[Showing lines ${truncation.totalLines - truncation.outputLines + 1}-${truncation.totalLines} of ${truncation.totalLines} (${formatSize(truncation.outputBytes)} of ${formatSize(truncation.totalBytes)}). Truncated from head.]`,
+              };
+            }
+            return c;
+          });
 
           return {
-            content: [{ type: "text", text: truncatedText }],
+            content: finalContent,
             details: truncationResult,
           };
         } catch (err) {
