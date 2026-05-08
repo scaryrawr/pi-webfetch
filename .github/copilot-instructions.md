@@ -21,7 +21,7 @@ This is a single-file extension at `extensions/webfetch.ts`. It:
 - **Imports**: Explicit `.js` extensions for relative imports.
 - **Naming**: `camelCase` functions, `PascalCase` types, JSDoc on public APIs.
 - **Error handling**: Catch errors in the tool executor; return typed error results rather than throwing.
-- **TUI**: Use `Container`/`Text` from `@mariozechner/pi-tui` for renderers; cache computed values in `component.state`.
+- **TUI**: Use `Container`/`Text` from `@earendil-works/pi-tui` for renderers; cache computed values in `component.state`.
 
 ## What not to do
 

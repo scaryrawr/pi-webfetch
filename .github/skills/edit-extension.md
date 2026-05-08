@@ -15,6 +15,6 @@ Make changes to the `webfetch` extension (`extensions/webfetch.ts`) — the sing
 
 - Only HTTP/HTTPS protocols are supported — don't add other protocol support without explicit direction.
 - Truncation to 2000 lines / 50 KB is a core safety feature — preserve it.
-- TUI renderers use `@mariozechner/pi-tui` primitives; cache computed values in `component.state`.
+- TUI renderers use `@earendil-works/pi-tui` primitives; cache computed values in `component.state`.
 - Use explicit `.js` extensions for relative imports.
 - Strict TypeScript: `verbatimModuleSyntax`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, `noUncheckedSideEffectImports`.

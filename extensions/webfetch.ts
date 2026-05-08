@@ -1,4 +1,4 @@
-import type { TextContent, ImageContent } from "@mariozechner/pi-ai";
+import type { TextContent, ImageContent } from "@earendil-works/pi-ai";
 import {
   type ExtensionAPI,
   defineTool,
@@ -12,8 +12,8 @@ import {
   truncateToVisualLines,
   type ToolRenderResultOptions,
   type Theme,
-} from "@mariozechner/pi-coding-agent";
-import { Container, Text, truncateToWidth } from "@mariozechner/pi-tui";
+} from "@earendil-works/pi-coding-agent";
+import { Container, Text, truncateToWidth } from "@earendil-works/pi-tui";
 import TurndownService from "turndown";
 import { Type } from "typebox";
 

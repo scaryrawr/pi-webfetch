@@ -22,7 +22,7 @@ This repo implements the **webfetch extension** for the pi coding agent — a to
 - **Imports**: Use explicit `.js` extensions for relative imports (TS/Nodenext convention).
 - **Naming**: Functions use `camelCase`. Type exports use PascalCase. JSDoc `@param`/`@returns`/`@throws` for public APIs.
 - **Error handling**: Wrap fetch logic in try/catch; return typed `{ content, details }` results rather than throwing from the tool executor.
-- **TUI**: Use `@mariozechner/pi-tui` primitives (`Container`, `Text`, `truncateToWidth`, `truncateToVisualLines`) for custom renderers.
+- **TUI**: Use `@earendil-works/pi-tui` primitives (`Container`, `Text`, `truncateToWidth`, `truncateToVisualLines`) for custom renderers.
 - **Truncation**: Prefer `truncateHead` from the pi agent SDK; include truncation metadata in result `details` for the renderer to surface.
 
 ## Build & Test
