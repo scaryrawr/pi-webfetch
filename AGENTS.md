@@ -1,45 +1,32 @@
-# pi-webfetch
+# pi-webfetch Repository Guidelines
 
-## Architecture
+## Project Structure & Module Organization
 
-This repo implements the **webfetch extension** for the pi coding agent — a tool that fetches web pages, converts HTML to markdown, and returns the result with truncation metadata.
+This is a pi coding-agent extension package. `package.json` loads the extension entry points from `pi.extensions`: `extensions/webfetch.ts` and `extensions/websearch.ts`.
 
-**Extension structure:**
+- `extensions/webfetch.ts` registers `webfetch`: accepts only `http:`/`https:` URLs, fetches pages, converts `text/html` through Turndown, returns image responses as base64 `ImageContent`, truncates text with `truncateHead`, and renders custom TUI previews.
+- `extensions/websearch.ts` registers `websearch` only when local `lynx` is available. It calls DuckDuckGo Lite via `lynx -source`, parses result title/URL/snippet fields, truncates output, and uses the same style of TUI timing/preview rendering.
 
-- `extensions/webfetch.ts` — Single-file extension. Registers the `webfetch` tool, defines the fetch logic, HTML→markdown conversion (via Turndown), truncation, and custom TUI renderers for call/result display.
+## Build, Test, and Development Commands
 
-**Key patterns:**
+- `npm run build` — TypeScript check with `tsgo -p ./tsconfig.json`; this must pass before handoff.
+- `npm run lint` — `oxlint` with type-aware checking over `extensions/**/*.ts`.
+- `npm run fmt:check` — verify formatting/import sorting; use `npm run fmt` to rewrite formatting.
+- `npm run lint:fix` — auto-fix supported lint issues.
+- `npm test -- --run` — Vitest. There are currently no test files, so this exits 1 until tests are added; do not treat that as a repo regression.
 
-- Fetches only `http:` and `https:` URLs; rejects other protocols.
-- HTML responses are converted to markdown via Turndown (ATX headings, fenced code blocks, `-` list markers).
-- Responses are truncated to 2000 lines / 50 KB (head truncation) to protect the context window.
-- Custom TUI renderers: a `WebfetchResultRenderComponent` (Container subclass) handles collapsed preview with line count hints and expanded full output.
-- Result truncation metadata is carried in `details` so the renderer can show a banner.
+Use `npm run build && npm run lint && npm run fmt:check` as the current required validation path.
 
-## Conventions
+## Coding Style & Naming Conventions
 
-- **TypeScript**: Strict mode, ES2024, `nodenext` modules. Use `verbatimModuleSyntax`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, `noUncheckedSideEffectImports`.
-- **Imports**: Use explicit `.js` extensions for relative imports (TS/Nodenext convention).
-- **Naming**: Functions use `camelCase`. Type exports use PascalCase. JSDoc `@param`/`@returns`/`@throws` for public APIs.
-- **Error handling**: Wrap fetch logic in try/catch; return typed `{ content, details }` results rather than throwing from the tool executor.
-- **TUI**: Use `@earendil-works/pi-tui` primitives (`Container`, `Text`, `truncateToWidth`, `truncateToVisualLines`) for custom renderers.
-- **Truncation**: Prefer `truncateHead` from the pi agent SDK; include truncation metadata in result `details` for the renderer to surface.
+TypeScript is strict ES2024 with `module: nodenext`, `verbatimModuleSyntax`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, and `noUncheckedSideEffectImports`. Keep relative imports compatible with NodeNext (`.js` extensions when any are added). `oxfmt` sorts imports.
 
-## Build & Test
+Use `camelCase` for functions and `PascalCase` for exported types/classes. Keep public helpers documented with JSDoc `@param`/`@returns`. Tool executors should catch errors and return typed `AgentToolResult` content/details rather than throwing to the agent.
 
-```bash
-npm run build    # tsgo -p ./tsconfig.json
-npm test         # vitest
-npm run fmt      # oxfmt
-npm run fmt:check # oxfmt --check
-npm run lint     # oxlint with tsgo type-checking
-npm run lint:fix # oxlint auto-fix
-```
+## Testing Guidelines
 
-Validation: `npm run build` must pass (zero errors).
+If you add tests, use Vitest naming that its defaults discover (`*.test.ts` or `*.spec.ts`) and then include `npm test -- --run` in validation. Prefer exported pure helpers (for example, search parsing) over network-dependent tests.
 
-## Safety
+## Security & Agent-Specific Instructions
 
-- Only `http:` and `https:` protocols are allowed.
-- Responses exceeding 5 MB are rejected at the fetch level.
-- No state is persisted between tool calls; each fetch is independent.
+Preserve protocol and size limits: `webfetch` must not fetch non-HTTP(S) URLs, and fetch/search outputs must stay bounded by the 5 MB fetch buffer plus `truncateHead` defaults (2000 lines / 50 KB). Do not persist state between tool calls. Keep TUI renderers built from `@earendil-works/pi-tui` primitives and cache width-dependent preview work in component state.

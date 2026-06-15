@@ -2,15 +2,19 @@
 
 ## Purpose
 
-Run the full validation pipeline to confirm the extension compiles cleanly and passes linting.
+Run the current required validation pipeline for this extension package.
 
 ## Steps
 
-1. Run `npm run build` — must produce zero errors.
-2. Run `npm run lint` — oxlint with tsgo type-checking; must be clean.
-3. Run `npm run fmt:check` — ensure formatting is correct.
-4. Run `npm test` — vitest suite (if applicable).
+1. Run `npm run build` — TypeScript must produce zero errors.
+2. Run `npm run lint` — oxlint with type-aware checking must be clean.
+3. Run `npm run fmt:check` — formatting/import sorting must already be correct.
+4. If Vitest test files exist (`*.test.ts` or `*.spec.ts`), run `npm test -- --run`.
+
+## Note
+
+`npm test -- --run` currently exits 1 because the repository has no test files. Do not report that as a regression unless tests have been added and still fail.
 
 ## Exit condition
 
-All four commands complete with exit code 0 and no errors/warnings.
+The first three commands complete with exit code 0; Vitest also passes when test files are present.
