@@ -15,7 +15,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { Container, Text, truncateToWidth } from "@earendil-works/pi-tui";
 import TurndownService from "turndown";
-import { Type } from "typebox";
+import { Type, type Static } from "typebox";
 
 /**
  * Extracts and concatenates all text-type content blocks from a fetch result.
@@ -35,6 +35,7 @@ function getTextOutput(
   );
 }
 
+/** Schema for the webfetch tool parameters. */
 const fetchParams = Type.Object({
   url: Type.String({
     format: "uri",
@@ -42,22 +43,30 @@ const fetchParams = Type.Object({
   }),
 });
 
-type FetchInput = {
-  url: string;
-};
+/** Input accepted by the webfetch tool executor. */
+type FetchInput = Static<typeof fetchParams>;
 
+/** Runtime state preserved across webfetch call/result renders. */
 type WebfetchRenderState = {
+  /** Timestamp when execution started, in milliseconds since epoch. */
   startedAt: number | undefined;
+  /** Timestamp when execution ended, in milliseconds since epoch. */
   endedAt: number | undefined;
+  /** Timer used to invalidate elapsed-time rendering while a fetch is running. */
   interval: NodeJS.Timeout | undefined;
 };
 
+/** Cached layout state for collapsed webfetch result rendering. */
 type WebfetchResultRenderState = {
+  /** Width used to compute the cached preview lines. */
   cachedWidth: number | undefined;
+  /** Cached preview visual lines for the current width. */
   cachedLines: string[] | undefined;
+  /** Number of visual lines omitted from the collapsed preview. */
   cachedSkipped: number | undefined;
 };
 
+/** Container component used to render cached webfetch result previews. */
 class WebfetchResultRenderComponent extends Container {
   state: WebfetchResultRenderState = {
     cachedWidth: undefined,
@@ -97,6 +106,8 @@ function formatWebfetchCall(args: { url: string } | undefined, theme: Theme): st
  * @param options - Rendering options (e.g., whether expanded).
  * @param theme - The current theme for styling.
  * @param showImages - Whether to render image content (currently unused).
+ * @param startedAt - Timestamp when the fetch started, if known.
+ * @param endedAt - Timestamp when the fetch finished, if known.
  */
 function rebuildWebfetchResultRenderComponent(
   component: WebfetchResultRenderComponent,
@@ -170,6 +181,11 @@ function rebuildWebfetchResultRenderComponent(
   }
 }
 
+/**
+ * Formats a duration in milliseconds for compact TUI display.
+ * @param ms - Duration in milliseconds.
+ * @returns The duration formatted in seconds with one decimal place.
+ */
 function formatDuration(ms: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
@@ -231,6 +247,7 @@ const webfetch = async (
   };
 };
 
+/** HTML-to-markdown converter configured for agent-readable markdown output. */
 const turndownService = new TurndownService({
   headingStyle: "atx",
   bulletListMarker: "-",
@@ -253,6 +270,7 @@ export default async function (pi: ExtensionAPI) {
         `Results are truncated to first ${DEFAULT_MAX_LINES} lines or ${formatSize(DEFAULT_MAX_BYTES)} (whichever is hit first) to prevent large responses from overwhelming the context window.`,
       promptSnippet: "Fetch web pages and convert HTML to markdown with truncation",
       parameters: fetchParams,
+      /** Executes the webfetch tool and converts thrown errors into tool output. */
       execute: async (
         _toolCallId,
         params: FetchInput,
@@ -290,6 +308,7 @@ export default async function (pi: ExtensionAPI) {
           };
         }
       }, //,
+      /** Renders the active webfetch tool call in the TUI. */
       renderCall(args, _theme, context) {
         const state = context.state;
         if (context.executionStarted && state.startedAt === undefined) {
@@ -300,6 +319,7 @@ export default async function (pi: ExtensionAPI) {
         text.setText(formatWebfetchCall(args, _theme));
         return text;
       },
+      /** Renders the webfetch result body, preview, truncation notice, and timing. */
       renderResult(result, options, _theme, context) {
         const state = context.state;
         if (state.startedAt !== undefined && options.isPartial && !state.interval) {

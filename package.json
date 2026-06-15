@@ -28,7 +28,8 @@
   },
   "pi": {
     "extensions": [
-      "./extensions/"
+      "./extensions/webfetch.ts",
+      "./extensions/websearch.ts"
     ]
   }
 }
