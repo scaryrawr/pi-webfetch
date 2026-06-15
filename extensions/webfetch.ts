@@ -290,7 +290,7 @@ export default async function (pi: ExtensionAPI) {
             if (c.type === "text" && i === content.length - 1 && truncation) {
               return {
                 ...c,
-                text: `${c.text}\n\n[Showing lines ${truncation.totalLines - truncation.outputLines + 1}-${truncation.totalLines} of ${truncation.totalLines} (${formatSize(truncation.outputBytes)} of ${formatSize(truncation.totalBytes)}). Truncated from head.]`,
+                text: `${c.text}\n\n[Showing lines 1-${truncation.outputLines} of ${truncation.totalLines} (${formatSize(truncation.outputBytes)} of ${formatSize(truncation.totalBytes)}). Truncated from head.]`,
               };
             }
             return c;
