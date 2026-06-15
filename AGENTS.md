@@ -2,10 +2,9 @@
 
 ## Project Structure & Module Organization
 
-This is a pi coding-agent extension package. `package.json` loads the extension entry points from `pi.extensions`: `extensions/webfetch.ts` and `extensions/websearch.ts`.
+This is a pi coding-agent extension package. `package.json` loads the extension entry point from `pi.extensions`: `extensions/webfetch.ts`.
 
 - `extensions/webfetch.ts` registers `webfetch`: accepts only `http:`/`https:` URLs, fetches pages, converts `text/html` through Turndown, returns image responses as base64 `ImageContent`, truncates text with `truncateHead`, and renders custom TUI previews.
-- `extensions/websearch.ts` registers `websearch` only when local `lynx` is available. It calls DuckDuckGo Lite via `lynx -source`, parses result title/URL/snippet fields, truncates output, and uses the same style of TUI timing/preview rendering.
 
 ## Build, Test, and Development Commands
 
@@ -25,8 +24,8 @@ Use `camelCase` for functions and `PascalCase` for exported types/classes. Keep 
 
 ## Testing Guidelines
 
-If you add tests, use Vitest naming that its defaults discover (`*.test.ts` or `*.spec.ts`) and then include `npm test -- --run` in validation. Prefer exported pure helpers (for example, search parsing) over network-dependent tests.
+If you add tests, use Vitest naming that its defaults discover (`*.test.ts` or `*.spec.ts`) and then include `npm test -- --run` in validation. Prefer exported pure helpers over network-dependent tests.
 
 ## Security & Agent-Specific Instructions
 
-Preserve protocol and size limits: `webfetch` must not fetch non-HTTP(S) URLs, and fetch/search outputs must stay bounded by the 5 MB fetch buffer plus `truncateHead` defaults (2000 lines / 50 KB). Do not persist state between tool calls. Keep TUI renderers built from `@earendil-works/pi-tui` primitives and cache width-dependent preview work in component state.
+Preserve protocol and size limits: `webfetch` must not fetch non-HTTP(S) URLs, and outputs must stay bounded by the 5 MB fetch buffer plus `truncateHead` defaults (2000 lines / 50 KB). Do not persist state between tool calls. Keep TUI renderers built from `@earendil-works/pi-tui` primitives and cache width-dependent preview work in component state.

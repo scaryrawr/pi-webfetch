@@ -28,8 +28,7 @@
   },
   "pi": {
     "extensions": [
-      "./extensions/webfetch.ts",
-      "./extensions/websearch.ts"
+      "./extensions/webfetch.ts"
     ]
   }
 }
