@@ -94,6 +94,7 @@ const WEBFETCH_PREVIEW_LINES = 15;
 function formatWebfetchCall(args: { url: string } | undefined, theme: Theme): string {
   const url = args?.url;
   const urlDisplay = url ? theme.fg("accent", url) : theme.fg("toolOutput", "...");
+
   return theme.fg("toolTitle", theme.bold(`fetch ${urlDisplay}`));
 }
 
@@ -140,12 +141,15 @@ function rebuildWebfetchResultRenderComponent(
             state.cachedSkipped = preview.skippedCount;
             state.cachedWidth = width;
           }
+
           if (state.cachedSkipped && state.cachedSkipped > 0) {
             const hint =
               theme.fg("muted", `... (${state.cachedSkipped} more lines,`) +
               ` ${keyHint("app.tools.expand", "to expand")})`;
+
             return ["", truncateToWidth(hint, width, "..."), ...(state.cachedLines ?? [])];
           }
+
           return ["", ...(state.cachedLines ?? [])];
         },
         invalidate: () => {
@@ -158,8 +162,10 @@ function rebuildWebfetchResultRenderComponent(
   }
 
   const truncation = result.details?.truncation;
+
   if (truncation?.truncated) {
     const warnings: string[] = [];
+
     if (truncation.truncatedBy === "lines") {
       warnings.push(
         `Truncated: showing ${truncation.outputLines} of ${truncation.totalLines} lines`,
@@ -169,6 +175,7 @@ function rebuildWebfetchResultRenderComponent(
         `Truncated: ${truncation.outputLines} lines shown (${formatSize(truncation.maxBytes ?? DEFAULT_MAX_BYTES)} limit)`,
       );
     }
+
     component.addChild(new Text(`\n${theme.fg("warning", `[${warnings.join(". ")}]`)}`, 0, 0));
   }
 
@@ -207,11 +214,13 @@ const webfetch = async (
   truncation: TruncationResult | undefined;
 }> => {
   const url = new URL(urlStr);
+
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new Error("Only HTTP and HTTPS protocols are supported.");
   }
 
   const response = await fetch(url, { signal: signal ?? null });
+
   if (!response.ok) {
     throw new Error(`Failed to fetch ${url.href}: ${response.statusText}`);
   }
@@ -219,6 +228,7 @@ const webfetch = async (
   const contentType = ((response.headers.get("content-type") || "").split(";")[0] ?? "")
     .trim()
     .toLowerCase();
+
   const arrayBuffer = await response.arrayBuffer();
 
   // Parse the media type (RFC 9110: media-type = type "/" subtype)
@@ -227,6 +237,7 @@ const webfetch = async (
   if (mediaType === "image") {
     // Return image as base64-encoded ImageContent
     const base64 = Buffer.from(arrayBuffer).toString("base64");
+
     return {
       content: [{ type: "image", data: base64, mimeType: contentType }],
       truncation: undefined,
@@ -235,12 +246,14 @@ const webfetch = async (
 
   // For text content (including text/html), decode and optionally convert
   let textContent = new TextDecoder().decode(arrayBuffer);
+
   if (contentType === "text/html") {
     textContent = turndownService.turndown(textContent);
   }
 
   // Apply truncation using defaults (2000 lines / 50KB)
   const truncation = truncateHead(textContent);
+
   return {
     content: [{ type: "text", text: truncation.content }],
     truncation: truncation.truncated ? truncation : undefined,
@@ -293,6 +306,7 @@ export default async function (pi: ExtensionAPI) {
                 text: `${c.text}\n\n[Showing lines 1-${truncation.outputLines} of ${truncation.totalLines} (${formatSize(truncation.outputBytes)} of ${formatSize(truncation.totalBytes)}). Truncated from head.]`,
               };
             }
+
             return c;
           });
 
@@ -302,6 +316,7 @@ export default async function (pi: ExtensionAPI) {
           };
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
+
           return {
             content: [{ type: "text", text: `Error: ${message}` }],
             details: { truncation: undefined },
@@ -311,30 +326,40 @@ export default async function (pi: ExtensionAPI) {
       /** Renders the active webfetch tool call in the TUI. */
       renderCall(args, _theme, context) {
         const state = context.state;
+
         if (context.executionStarted && state.startedAt === undefined) {
           state.startedAt = Date.now();
           state.endedAt = undefined;
         }
+
+        // SAFETY: renderCall only ever stores a Text component for this tool call.
         const text = (context.lastComponent as Text | undefined) ?? new Text("", 0, 0);
         text.setText(formatWebfetchCall(args, _theme));
+
         return text;
       },
       /** Renders the webfetch result body, preview, truncation notice, and timing. */
       renderResult(result, options, _theme, context) {
         const state = context.state;
+
         if (state.startedAt !== undefined && options.isPartial && !state.interval) {
           state.interval = setInterval(() => context.invalidate(), 1000);
         }
+
         if (!options.isPartial || context.isError) {
           state.endedAt ??= Date.now();
+
           if (state.interval) {
             clearInterval(state.interval);
             state.interval = undefined;
           }
         }
+
+        // SAFETY: renderResult only ever stores a WebfetchResultRenderComponent for this tool call.
         const component =
           (context.lastComponent as WebfetchResultRenderComponent | undefined) ??
           new WebfetchResultRenderComponent();
+
         rebuildWebfetchResultRenderComponent(
           component,
           result,
@@ -345,6 +370,7 @@ export default async function (pi: ExtensionAPI) {
           state.endedAt,
         );
         component.invalidate();
+
         return component;
       },
     }),
