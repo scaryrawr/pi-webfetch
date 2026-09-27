@@ -14,6 +14,8 @@ This is a pi coding-agent extension package. `package.json` loads the extension 
 - `npm run lint:fix` — auto-fix supported lint issues.
 - `npm test -- --run` — Vitest. There are currently no test files, so this exits 1 until tests are added; do not treat that as a repo regression.
 
+`oxlint` declares an optional `oxlint-tsgolint` peer (currently `>=7.0.2001`, versioned independently of `oxlint`) that powers the type-aware rules used above. Bump both in the same change and reinstall; a version outside the peer range fails `npm install` with `ERESOLVE`. Read the peer range in `node_modules/oxlint/package.json` instead of guessing it from the oxlint version.
+
 Use `npm run build && npm run lint && npm run fmt:check` as the current required validation path.
 
 ## Coding Style & Naming Conventions
