@@ -18,9 +18,9 @@
     "turndown": "^7.2.4"
   },
   "devDependencies": {
-    "@earendil-works/pi-ai": "^0.99.1",
-    "@earendil-works/pi-coding-agent": "^0.99.1",
-    "@earendil-works/pi-tui": "^0.99.1",
+    "@earendil-works/pi-ai": "1.0.0",
+    "@earendil-works/pi-coding-agent": "1.0.0",
+    "@earendil-works/pi-tui": "1.0.0",
     "@types/turndown": "^5.0.6",
     "@typescript/native-preview": "^7.0.0-dev.20260707.2",
     "oxfmt": "^0.68.0",
